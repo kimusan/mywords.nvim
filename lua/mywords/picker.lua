@@ -50,9 +50,12 @@ M._fzf_picker = function(words, bufnr)
     end
   end
 
+  local fzf_opts = {}
+  fzf_opts["--multi"] = false
+
   fzf_lua.fzf_exec(words, {
     prompt = "MyWords >",
-    fzf_opts = { "--multi" = false },
+    fzf_opts = fzf_opts,
     actions = {
       ["Default"] = function(selected) end,
       ["Ctrl-d"] = delete_action,

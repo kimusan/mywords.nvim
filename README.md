@@ -13,6 +13,7 @@ Personal dictionary plugin for Neovim. Add special words to a global or per-proj
 ## Installation
 
 ### lazy.nvim
+
 ```lua
 { "mywords/mywords.nvim" }
 ```
@@ -42,20 +43,22 @@ require("mywords").setup({
 
 ### Keybindings
 
-No defaults. Wire them up yourself:
+Default keybindings are set on `setup()`. Override them via the `keys` option:
 
 ```lua
-vim.keymap.set("n", "<leader>ma", function()
-  require("mywords").add()
-end, { desc = "Add word to dictionary" })
+require("mywords").setup({
+  keys = {
+    add = "<leader>ma",    -- add word at cursor
+    delete = "<leader>md", -- delete word at cursor
+    search = "<leader>ms", -- search dictionary
+  },
+})
+```
 
-vim.keymap.set("n", "<leader>md", function()
-  require("mywords").delete()
-end, { desc = "Delete word from dictionary" })
+Disable defaults by passing empty strings:
 
-vim.keymap.set("n", "<leader>ms", function()
-  require("mywords").search()
-end, { desc = "Search dictionary" })
+```lua
+keys = { add = "", delete = "", search = "" },
 ```
 
 ### nvim-cmp

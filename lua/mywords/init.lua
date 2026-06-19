@@ -23,12 +23,30 @@ M.setup = function(opts)
     completion.setup(backend)
   end
 
+  local keys = vim.tbl_deep_extend("force", {
+    add = "<leader>ma",
+    delete = "<leader>md",
+    search = "<leader>ms",
+  }, _config.keys or {})
+
+  vim.keymap.set("n", keys.add, function()
+    M.add()
+  end, { desc = "MyWords: Add word" })
+
+  vim.keymap.set("n", keys.delete, function()
+    M.delete()
+  end, { desc = "MyWords: Delete word" })
+
+  vim.keymap.set("n", keys.search, function()
+    M.search()
+  end, { desc = "MyWords: Search words" })
+
   return M
 end
 
 M.add = function(word, scope)
   if not word then
-    word = vim.fn.expand("<cword>")
+    word = vim.fn.expand("<cWORD>")
     if word == "" then
       vim.ui.input({ prompt = "Word: " }, function(input)
         if input and input ~= "" then
@@ -57,7 +75,7 @@ end
 
 M.delete = function(word)
   if not word then
-    word = vim.fn.expand("<cword>")
+    word = get_word_under_cursor()
     if word == "" then
       vim.notify("No word under cursor", vim.log.WARN)
       return

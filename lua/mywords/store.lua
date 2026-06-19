@@ -31,7 +31,7 @@ local function read_json_file(path)
   if not f then return {} end
   local content = f:read("*all")
   f:close()
-  if not content or content:trim() == "" then return {} end
+  if not content or content:gsub("%s", "") == "" then return {} end
   local ok, data = pcall(vim.json.decode, content)
   if ok and type(data) == "table" and #data > 0 then
     return data
