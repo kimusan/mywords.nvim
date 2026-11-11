@@ -33,7 +33,7 @@ Personal dictionary plugin for Neovim. Spell checkers and linters flag domain-sp
 require("mywords").setup()
 ```
 
-This registers default keybindings (`<leader>ma`, `<leader>md`, `<leader>ms>`) and enables completion with auto-detected backend.
+This registers default keybindings (`<leader>ma`, `<leader>md`, `<leader>ms`, and `<C-s>` in insert mode) and enables completion with auto-detected backend.
 
 ### Full configuration
 
@@ -65,6 +65,8 @@ require("mywords").setup({
   },
 })
 ```
+
+Note: the default `<C-s>` overrides Neovim's built-in LSP signature-help key in insert mode; set `add_insert = ""` or a different key to change it.
 
 Disable default keybindings by passing empty strings:
 
