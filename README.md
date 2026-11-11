@@ -61,6 +61,7 @@ require("mywords").setup({
     add = "<leader>ma",    -- add word at cursor
     delete = "<leader>md", -- delete word at cursor
     search = "<leader>ms", -- search dictionary
+    add_insert = "<C-s>",  -- insert mode: add current word or the selected completion item
   },
 })
 ```
@@ -68,7 +69,7 @@ require("mywords").setup({
 Disable default keybindings by passing empty strings:
 
 ```lua
-keys = { add = "", delete = "", search = "" },
+keys = { add = "", delete = "", search = "", add_insert = "" },
 ```
 
 ### nvim-cmp
@@ -122,15 +123,32 @@ return {
 
 Words are added to the project dictionary if one exists, otherwise to global.
 
+### Saving from the completion menu
+
+While a completion menu is open (nvim-cmp or built-in), press `<C-s>` to save the
+currently highlighted item to the dictionary. Without an open menu it saves the word
+under the cursor. This works because the menu is read through `vim.fn.complete_info()`.
+
 ### Deleting words
 
 1. Place cursor on a word and press `<leader>md`
 2. Or search for it: `<leader>ms`, select it, press `<C-d>` (fzf-lua only)
 3. Or call directly: `require("mywords").delete("loremipsum")`
 
-### Browsing the dictionary
+### Browsing and managing the dictionary
 
-Press `<leader>ms` to open a picker with all saved words. Search filters the list. With fzf-lua, use `<C-d>` to delete the selected word without leaving the picker.
+Press `<leader>ms` to open the picker. Each row shows the word and its scope
+(`project` or `global`). Typing filters the list.
+
+| Key    | Action                                                        |
+|--------|---------------------------------------------------------------|
+| Enter  | Insert the word at your previous cursor position              |
+| Ctrl-d | Delete the word                                               |
+| Alt-m  | Move the word between project and global scope                |
+| Alt-r  | Rename the word                                               |
+
+Delete, move, and rename are fzf-lua only. Without fzf-lua the picker falls back to
+`vim.ui.select` with Enter-to-insert.
 
 ### Programmatic access
 
@@ -149,6 +167,17 @@ local results = require("mywords").store.search("lorem")
 -- Reload after external edits
 require("mywords").reload()
 ```
+
+## Manual Test Checklist
+
+The store and command layer are covered by `tests/run.lua` (run with
+`nvim -l tests/run.lua` from the repo root). Picker and completion-menu flows need a
+live UI:
+
+- [ ] `<leader>ma` adds the word under the cursor
+- [ ] `<leader>md` deletes the word under the cursor
+- [ ] `<C-s>` with an open completion menu saves the highlighted item
+- [ ] Picker: Enter inserts, Ctrl-d deletes, Alt-m moves scope, Alt-r renames
 
 ## Dictionary Storage
 
