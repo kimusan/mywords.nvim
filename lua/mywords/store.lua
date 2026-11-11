@@ -181,6 +181,24 @@ M.get_words = function(bufnr)
   return result
 end
 
+M.get_words_with_scope = function(bufnr)
+  local seen = {}
+  local result = {}
+  for _, w in ipairs(project_words) do
+    if not seen[w] then
+      seen[w] = true
+      table.insert(result, { word = w, scope = "project" })
+    end
+  end
+  for _, w in ipairs(global_words) do
+    if not seen[w] then
+      seen[w] = true
+      table.insert(result, { word = w, scope = "global" })
+    end
+  end
+  return result
+end
+
 M.get_words_by_scope = function(bufnr)
   return {
     global = vim.deepcopy(global_words),

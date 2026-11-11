@@ -82,6 +82,28 @@ do
   check("cache: B file has no A word", fileB:find("wordA") == nil)
 end
 
+-- Task 3: get_words_with_scope
+do
+  local dir, proj = fresh_env("scope")
+  init_store(dir, proj .. "/main.lua")
+
+  store.add("pword", "project", 0)
+  store.add("gword", "global", 0)
+  store.add("both", "global", 0)
+  store.add("both", "project", 0)
+
+  local entries = store.get_words_with_scope(0)
+  local by_word = {}
+  for _, e in ipairs(entries) do
+    by_word[e.word] = e.scope
+  end
+  check("scope: project word tagged", by_word["pword"] == "project")
+  check("scope: global word tagged", by_word["gword"] == "global")
+  check("scope: duplicate deduped to project", by_word["both"] == "project")
+  check("scope: first entry is project scope", entries[1].scope == "project")
+  check("scope: count is 3", #entries == 3)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then
   vim.cmd("cquit")
