@@ -27,6 +27,7 @@ M.setup = function(opts)
     add = "<leader>ma",
     delete = "<leader>md",
     search = "<leader>ms",
+    add_insert = "<C-s>",
   }, _config.keys or {})
 
   vim.keymap.set("n", keys.add, function()
@@ -40,6 +41,12 @@ M.setup = function(opts)
   vim.keymap.set("n", keys.search, function()
     M.search()
   end, { desc = "MyWords: Search words" })
+
+  if keys.add_insert ~= "" then
+    vim.keymap.set("i", keys.add_insert, function()
+      M.add_current()
+    end, { desc = "MyWords: Add current word or completion" })
+  end
 
   return M
 end
@@ -57,25 +64,33 @@ M.add = function(word, scope)
     end
   end
 
-  local added
-  if scope == "global" then
-    added = store.add(word, "global", 0)
-  elseif scope == "project" then
-    added = store.add(word, "project", 0)
-  else
-    added = store.add(word, nil, 0)
+  if store.has(word, 0) then
+    vim.notify("Word already exists: " .. word, vim.log.INFO)
+    return
   end
 
-  if not added then
-    vim.notify("Word already exists: " .. word, vim.log.INFO)
-  else
-    vim.notify("Added: " .. word, vim.log.INFO)
+  store.add(word, scope, 0)
+  vim.notify("Added: " .. word, vim.log.INFO)
+end
+
+M.add_current = function()
+  local word = nil
+  if vim.fn.pumvisible() == 1 then
+    local info = vim.fn.complete_info()
+    local sel = info and info.selected or -1
+    if sel >= 0 and info.items and info.items[sel + 1] then
+      word = info.items[sel + 1].word
+    end
   end
+  if not word then
+    word = vim.fn.expand("<cWORD>")
+  end
+  M.add(word)
 end
 
 M.delete = function(word)
   if not word then
-    word = get_word_under_cursor()
+    word = vim.fn.expand("<cWORD>")
     if word == "" then
       vim.notify("No word under cursor", vim.log.WARN)
       return

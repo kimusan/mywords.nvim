@@ -178,6 +178,50 @@ do
   check("move: word still in global", store.has("loner", 0) == true)
 end
 
+-- Task 6: init.lua
+do
+  local dir, proj = fresh_env("init")
+  init_store(dir, proj .. "/main.lua")
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "hello world" })
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+
+  local mywords = require("mywords")
+  mywords.setup({ dir = dir })
+
+  local msgs = {}
+  local orig_notify = vim.notify
+  vim.notify = function(msg, ...)
+    msgs[#msgs + 1] = msg
+  end
+  local function saw(msg_part)
+    for _, m in ipairs(msgs) do
+      if m:find(msg_part, 1, true) then return true end
+    end
+    return false
+  end
+
+  mywords.add(nil)
+  check("init: add word under cursor", saw("Added: hello"))
+
+  msgs = {}
+  mywords.add(nil)
+  check("init: duplicate reported as existing", saw("already exists"))
+
+  local ok_del = pcall(mywords.delete, nil)
+  check("init: delete under cursor does not error", ok_del)
+  check("init: word deleted", store.has("hello", 0) == false)
+
+  vim.api.nvim_win_set_cursor(0, { 1, 6 })
+  local ok_ac = pcall(mywords.add_current)
+  check("init: add_current does not error", ok_ac)
+  check("init: add_current uses word under cursor without pum", store.has("world", 0) == true)
+
+  vim.notify = orig_notify
+
+  check("init: insert mode key registered", vim.fn.maparg("<C-s>", "i") ~= "")
+  check("init: add key registered", vim.fn.maparg("<leader>ma", "n") ~= "")
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then
   vim.cmd("cquit")
