@@ -14,6 +14,7 @@ M.setup = function(opts)
     project_file = opts.project_file or ".mywords.json",
     project_root_patterns = opts.project_root_patterns or { ".git", ".neoconf.json" },
     completion = opts.completion or { enabled = true },
+    keys = opts.keys or {},
   }
 
   store.init(_config)

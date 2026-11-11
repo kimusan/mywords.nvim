@@ -218,7 +218,8 @@ do
 
   vim.notify = orig_notify
 
-  check("init: insert mode key registered", vim.fn.maparg("<C-s>", "i") ~= "")
+  mywords.setup({ dir = dir, keys = { add_insert = "<M-q>" } })
+  check("init: insert mode key registered", vim.fn.maparg("<M-q>", "i") ~= "")
   check("init: add key registered", vim.fn.maparg("<leader>ma", "n") ~= "")
 end
 
