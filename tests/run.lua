@@ -50,6 +50,38 @@ do
   check("has: empty is false", store.has("   ", 0) == false)
 end
 
+-- Task 2: project path cache
+do
+  local dirA = vim.fn.tempname() .. "/cacheA"
+  local dirB = vim.fn.tempname() .. "/cacheB"
+  local projA = dirA .. "/projA"
+  local projB = dirB .. "/projB"
+  vim.fn.mkdir(projA, "p")
+  vim.fn.mkdir(projB, "p")
+  vim.fn.writefile({}, projA .. "/.git")
+  vim.fn.writefile({}, projB .. "/.git")
+
+  init_store(dirA, projA .. "/main.lua")
+  check("cache: add wordA to project A", store.add("wordA", "project", 0) == true)
+
+  vim.api.nvim_buf_set_name(0, projB .. "/main.lua")
+  check("cache: add wordB to project B", store.add("wordB", "project", 0) == true)
+
+  local function readf(p)
+    local f = io.open(p, "r")
+    if not f then return "{}" end
+    local c = f:read("*a")
+    f:close()
+    return c
+  end
+  local fileA = readf(projA .. "/.mywords.json")
+  local fileB = readf(projB .. "/.mywords.json")
+  check("cache: wordA in A file", fileA:find("wordA") ~= nil)
+  check("cache: wordB in B file", fileB:find("wordB") ~= nil)
+  check("cache: A file untouched by B write", fileA:find("wordB") == nil)
+  check("cache: B file has no A word", fileB:find("wordA") == nil)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then
   vim.cmd("cquit")

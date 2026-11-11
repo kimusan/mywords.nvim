@@ -12,18 +12,8 @@ M.find_project_root = function(bufnr)
   if path == "" or not path then return nil end
 
   local dir = vim.fs.dirname(path)
-  local root = vim.fs.root(dir, { name = config.project_root_patterns })
+  local root = vim.fs.root(dir, config.project_root_patterns)
   return root
-end
-
-M.get_project_file_path = function(bufnr)
-  if project_file_path then return project_file_path end
-
-  local root = M.find_project_root(bufnr)
-  if not root then return nil end
-
-  project_file_path = vim.fs.joinpath(root, config.project_file)
-  return project_file_path
 end
 
 local function read_json_file(path)
@@ -38,6 +28,24 @@ local function read_json_file(path)
     return data
   end
   return {}
+end
+
+M.get_project_file_path = function(bufnr)
+  local root = M.find_project_root(bufnr)
+  if not root then
+    if project_root ~= nil then
+      project_root = nil
+      project_file_path = nil
+      project_words = {}
+    end
+    return nil
+  end
+  if project_root ~= root then
+    project_root = root
+    project_file_path = vim.fs.joinpath(root, config.project_file)
+    project_words = read_json_file(project_file_path)
+  end
+  return project_file_path
 end
 
 local function write_json_file(path, data)
@@ -74,6 +82,7 @@ end
 
 M.reload = function(bufnr)
   project_file_path = nil
+  project_root = nil
   M.load_global()
   M.load_project(bufnr)
 end
@@ -92,15 +101,15 @@ M.add = function(word, scope, bufnr)
   end
 
   if scope == "project" then
+    local path = M.get_project_file_path(bufnr)
+    if not path then
+      return false
+    end
     for _, w in ipairs(project_words) do
       if w == word then return true end
     end
     table.insert(project_words, word)
-    local path = M.get_project_file_path(bufnr)
-    if path then
-      return write_json_file(path, project_words)
-    end
-    return false
+    return write_json_file(path, project_words)
   end
 
   local path = M.get_project_file_path(bufnr)
