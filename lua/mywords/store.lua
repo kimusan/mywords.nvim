@@ -4,6 +4,7 @@ local config = {}
 local global_words = {}
 local project_words = {}
 local project_file_path = nil
+local project_root = nil
 
 M.find_project_root = function(bufnr)
   bufnr = bufnr or 0
@@ -49,6 +50,10 @@ local function write_json_file(path, data)
   f:write(vim.json.encode(data))
   f:close()
   return true
+end
+
+local function trim(s)
+  return (s:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
 M.load_global = function()
@@ -134,6 +139,18 @@ M.delete = function(word, bufnr)
     end
   end
 
+  return false
+end
+
+M.has = function(word, bufnr)
+  word = trim(word)
+  if word == "" then return false end
+  for _, w in ipairs(project_words) do
+    if w == word then return true end
+  end
+  for _, w in ipairs(global_words) do
+    if w == word then return true end
+  end
   return false
 end
 
