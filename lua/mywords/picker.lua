@@ -38,7 +38,7 @@ local function fzf_picker(entries, bufnr, target)
       local word = split_row(first_selected(selected))
       insert_at_cursor(word, target)
     end,
-    ["ctrl-d"] = function(selected, fzf_opts)
+    ["ctrl-d"] = function(selected)
       local word = split_row(first_selected(selected))
       if not word then return end
       if store.delete(word, bufnr) then
@@ -46,9 +46,8 @@ local function fzf_picker(entries, bufnr, target)
       else
         vim.notify("Word not found: " .. word, vim.log.WARN)
       end
-      fzf_opts.exit()
     end,
-    ["alt-m"] = function(selected, fzf_opts)
+    ["alt-m"] = function(selected)
       local word, scope = split_row(first_selected(selected))
       if not word then return end
       local target_scope = (scope == "project") and "global" or "project"
@@ -57,9 +56,8 @@ local function fzf_picker(entries, bufnr, target)
       else
         vim.notify("Cannot move " .. word .. " to " .. target_scope, vim.log.WARN)
       end
-      fzf_opts.exit()
     end,
-    ["alt-r"] = function(selected, fzf_opts)
+    ["alt-r"] = function(selected)
       local word = split_row(first_selected(selected))
       if not word then return end
       local new_word = vim.fn.input("Rename '" .. word .. "' to: ", word)
@@ -70,7 +68,6 @@ local function fzf_picker(entries, bufnr, target)
           vim.notify("Rename failed for: " .. word, vim.log.WARN)
         end
       end
-      fzf_opts.exit()
     end,
   }
 
