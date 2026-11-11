@@ -192,6 +192,34 @@ M.rename = function(word, new_word, bufnr)
   return false
 end
 
+M.move = function(word, target_scope, bufnr)
+  word = trim(word)
+  if word == "" then return false end
+  if target_scope ~= "global" and target_scope ~= "project" then return false end
+  if not M.has(word, bufnr) then return false end
+  if target_scope == "project" and not M.get_project_file_path(bufnr) then return false end
+
+  for i = #project_words, 1, -1 do
+    if project_words[i] == word then
+      table.remove(project_words, i)
+    end
+  end
+  for i = #global_words, 1, -1 do
+    if global_words[i] == word then
+      table.remove(global_words, i)
+    end
+  end
+
+  if target_scope == "project" then
+    table.insert(project_words, word)
+    write_json_file(M.get_project_file_path(bufnr), project_words)
+  else
+    table.insert(global_words, word)
+    write_json_file(vim.fs.joinpath(config.dir, config.global_file), global_words)
+  end
+  return true
+end
+
 M.get_words = function(bufnr)
   local seen = {}
   local result = {}

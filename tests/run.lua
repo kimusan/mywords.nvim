@@ -128,6 +128,43 @@ do
   check("rename: to existing name fails", store.rename("gname2", "taken", 0) == false)
 end
 
+-- Task 5: move
+do
+  local dir, proj = fresh_env("move")
+  init_store(dir, proj .. "/main.lua")
+
+  store.add("mover", "project", 0)
+  check("move: project to global", store.move("mover", "global", 0) == true)
+
+  local scoped = store.get_words_by_scope(0)
+  check("move: gone from project", #scoped.project == 0)
+  check("move: in global", vim.tbl_contains(scoped.global, "mover") == true)
+
+  check("move: global to project", store.move("mover", "project", 0) == true)
+  scoped = store.get_words_by_scope(0)
+  check("move: back in project", vim.tbl_contains(scoped.project, "mover") == true)
+
+  check("move: not found returns false", store.move("ghost", "global", 0) == false)
+  check("move: invalid scope returns false", store.move("mover", "nowhere", 0) == false)
+end
+
+-- Task 5b: move to project without a project file
+do
+  local dir = vim.fn.tempname() .. "/movenoproj"
+  vim.fn.mkdir(dir, "p")
+  vim.api.nvim_buf_set_name(0, "")
+  store.init({
+    dir = dir,
+    global_file = "global.json",
+    project_file = ".mywords.json",
+    project_root_patterns = { ".git" },
+  })
+
+  store.add("loner", "global", 0)
+  check("move: to project without file fails", store.move("loner", "project", 0) == false)
+  check("move: word still in global", store.has("loner", 0) == true)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then
   vim.cmd("cquit")
