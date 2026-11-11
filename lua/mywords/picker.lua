@@ -4,13 +4,20 @@ local M = {}
 
 local function first_selected(selected)
   if type(selected) ~= "table" or #selected == 0 then
+    return nil
+  end
+  local entry = selected[1]
+  if type(entry) == "table" then
+    entry = entry[1]
+  end
+  return entry
+end
+
+local function split_row(line)
+  if type(line) ~= "string" then
     return nil, nil
   end
-  local row = selected[1]
-  if type(row) ~= "table" then
-    return row, nil
-  end
-  return row[1], row[2]
+  return line:match("^(.-)\t(.*)$")
 end
 
 local function insert_at_cursor(word, target)
@@ -21,18 +28,18 @@ local function insert_at_cursor(word, target)
 end
 
 local function fzf_picker(entries, bufnr, target)
-  local rows = {}
+  local lines = {}
   for _, e in ipairs(entries) do
-    table.insert(rows, { e.word, e.scope })
+    table.insert(lines, e.word .. "\t" .. e.scope)
   end
 
   local actions = {
     ["Default"] = function(selected)
-      local word = first_selected(selected)
+      local word = split_row(first_selected(selected))
       insert_at_cursor(word, target)
     end,
     ["ctrl-d"] = function(selected, fzf_opts)
-      local word = first_selected(selected)
+      local word = split_row(first_selected(selected))
       if not word then return end
       if store.delete(word, bufnr) then
         vim.notify("Deleted: " .. word, vim.log.INFO)
@@ -42,7 +49,7 @@ local function fzf_picker(entries, bufnr, target)
       fzf_opts.exit()
     end,
     ["alt-m"] = function(selected, fzf_opts)
-      local word, scope = first_selected(selected)
+      local word, scope = split_row(first_selected(selected))
       if not word then return end
       local target_scope = (scope == "project") and "global" or "project"
       if store.move(word, target_scope, bufnr) then
@@ -53,7 +60,7 @@ local function fzf_picker(entries, bufnr, target)
       fzf_opts.exit()
     end,
     ["alt-r"] = function(selected, fzf_opts)
-      local word = first_selected(selected)
+      local word = split_row(first_selected(selected))
       if not word then return end
       local new_word = vim.fn.input("Rename '" .. word .. "' to: ", word)
       if new_word ~= "" and new_word ~= word then
@@ -67,9 +74,9 @@ local function fzf_picker(entries, bufnr, target)
     end,
   }
 
-  require("fzf-lua").fzf_exec(rows, {
+  require("fzf-lua").fzf_exec(lines, {
     prompt = "MyWords > ",
-    footer = true,
+    fzf_opts = { ["--delimiter"] = "\t", ["--with-nth"] = "1" },
     actions = actions,
   })
 end
