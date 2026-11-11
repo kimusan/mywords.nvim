@@ -2,74 +2,129 @@ local store = require("mywords.store")
 
 local M = {}
 
+local function first_selected(selected)
+  if type(selected) ~= "table" or #selected == 0 then
+    return nil, nil
+  end
+  local row = selected[1]
+  if type(row) ~= "table" then
+    return row, nil
+  end
+  return row[1], row[2]
+end
+
+local function insert_at_cursor(word, target)
+  if not word then return end
+  vim.api.nvim_set_current_buf(target.bufnr)
+  vim.api.nvim_win_set_cursor(0, target.pos)
+  vim.api.nvim_put({ word }, "l", false, true)
+end
+
+local function fzf_picker(entries, bufnr, target)
+  local rows = {}
+  for _, e in ipairs(entries) do
+    table.insert(rows, { e.word, e.scope })
+  end
+
+  local actions = {
+    ["Default"] = function(selected)
+      local word = first_selected(selected)
+      insert_at_cursor(word, target)
+    end,
+    ["ctrl-d"] = function(selected, fzf_opts)
+      local word = first_selected(selected)
+      if not word then return end
+      if store.delete(word, bufnr) then
+        vim.notify("Deleted: " .. word, vim.log.INFO)
+      else
+        vim.notify("Word not found: " .. word, vim.log.WARN)
+      end
+      fzf_opts.exit()
+    end,
+    ["alt-m"] = function(selected, fzf_opts)
+      local word, scope = first_selected(selected)
+      if not word then return end
+      local target_scope = (scope == "project") and "global" or "project"
+      if store.move(word, target_scope, bufnr) then
+        vim.notify("Moved " .. word .. " to " .. target_scope, vim.log.INFO)
+      else
+        vim.notify("Cannot move " .. word .. " to " .. target_scope, vim.log.WARN)
+      end
+      fzf_opts.exit()
+    end,
+    ["alt-r"] = function(selected, fzf_opts)
+      local word = first_selected(selected)
+      if not word then return end
+      local new_word = vim.fn.input("Rename '" .. word .. "' to: ", word)
+      if new_word ~= "" and new_word ~= word then
+        if store.rename(word, new_word, bufnr) then
+          vim.notify("Renamed " .. word .. " to " .. new_word, vim.log.INFO)
+        else
+          vim.notify("Rename failed for: " .. word, vim.log.WARN)
+        end
+      end
+      fzf_opts.exit()
+    end,
+  }
+
+  require("fzf-lua").fzf_exec(rows, {
+    prompt = "MyWords > ",
+    footer = true,
+    actions = actions,
+  })
+end
+
+local function ui_select_picker(entries, bufnr, target)
+  local words = {}
+  for _, e in ipairs(entries) do
+    table.insert(words, e.word)
+  end
+  table.sort(words)
+  vim.ui.select(words, {
+    prompt = "MyWords: select to insert at cursor",
+  }, function(choice)
+    if choice then
+      insert_at_cursor(choice, target)
+    end
+  end)
+end
+
 M.open = function(opts, bufnr)
   opts = opts or {}
   bufnr = bufnr or 0
-  local words = store.get_words(bufnr)
+  local entries = store.get_words_with_scope(bufnr)
 
-  if #words == 0 then
+  if #entries == 0 then
     vim.notify("No words in dictionary", vim.log.INFO)
     return
   end
 
   if opts.query and opts.query ~= "" then
-    words = store.search(opts.query, bufnr)
-    if #words == 0 then
+    local q = opts.query:lower()
+    local filtered = {}
+    for _, e in ipairs(entries) do
+      if e.word:lower():find(q, 1, true) then
+        table.insert(filtered, e)
+      end
+    end
+    entries = filtered
+    if #entries == 0 then
       vim.notify("No matches found", vim.log.INFO)
       return
     end
   end
 
-  M._open_picker(words, bufnr)
-end
+  local target = {
+    bufnr = vim.api.nvim_get_current_buf(),
+    pos = vim.api.nvim_win_get_cursor(0),
+  }
 
-M._open_picker = function(words, bufnr)
-  local ok, fzf_lua = pcall(require, "fzf-lua")
+  local ok = pcall(require, "fzf-lua")
   if ok then
-    M._fzf_picker(words, bufnr)
+    fzf_picker(entries, bufnr, target)
   else
-    M._ui_select_picker(words, bufnr)
+    ui_select_picker(entries, bufnr, target)
   end
-end
-
-M._fzf_picker = function(words, bufnr)
-  local fzf_lua = require("fzf-lua")
-
-  local delete_action = function(selected, fzf_opts)
-    if #selected == 0 then return end
-    local word = selected[1]
-    if type(word) == "table" then
-      word = word[1]
-    end
-    if word then
-      local result = store.delete(tostring(word), bufnr)
-      if result then
-        vim.notify("Deleted: " .. word, vim.log.INFO)
-      end
-      fzf_opts.exit()
-    end
-  end
-
-  local fzf_opts = {}
-  fzf_opts["--multi"] = false
-
-  fzf_lua.fzf_exec(words, {
-    prompt = "MyWords >",
-    fzf_opts = fzf_opts,
-    actions = {
-      ["Default"] = function(selected) end,
-      ["Ctrl-d"] = delete_action,
-    },
-  })
-end
-
-M._ui_select_picker = function(words, bufnr)
-  table.sort(words)
-  vim.ui.select(words, {
-    prompt = "MyWords: Search",
-  }, function(choice)
-    -- Selection returned but no action needed beyond display
-  end)
 end
 
 return M
