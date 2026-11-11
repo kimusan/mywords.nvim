@@ -140,9 +140,22 @@ do
   check("move: gone from project", #scoped.project == 0)
   check("move: in global", vim.tbl_contains(scoped.global, "mover") == true)
 
+  local function readf(p)
+    local f = io.open(p, "r")
+    if not f then return "{}" end
+    local c = f:read("*a")
+    f:close()
+    return c
+  end
+  check("move: project file no longer has word", readf(proj .. "/.mywords.json"):find("mover") == nil)
+  check("move: global file has word", readf(dir .. "/global.json"):find("mover") ~= nil)
+
   check("move: global to project", store.move("mover", "project", 0) == true)
   scoped = store.get_words_by_scope(0)
   check("move: back in project", vim.tbl_contains(scoped.project, "mover") == true)
+
+  check("move: project file has word again", readf(proj .. "/.mywords.json"):find("mover") ~= nil)
+  check("move: global file no longer has word", readf(dir .. "/global.json"):find("mover") == nil)
 
   check("move: not found returns false", store.move("ghost", "global", 0) == false)
   check("move: invalid scope returns false", store.move("mover", "nowhere", 0) == false)

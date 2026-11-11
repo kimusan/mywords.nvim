@@ -199,23 +199,36 @@ M.move = function(word, target_scope, bufnr)
   if not M.has(word, bufnr) then return false end
   if target_scope == "project" and not M.get_project_file_path(bufnr) then return false end
 
+  local in_project = false
+  local in_global = false
   for i = #project_words, 1, -1 do
     if project_words[i] == word then
       table.remove(project_words, i)
+      in_project = true
     end
   end
   for i = #global_words, 1, -1 do
     if global_words[i] == word then
       table.remove(global_words, i)
+      in_global = true
     end
   end
 
   if target_scope == "project" then
     table.insert(project_words, word)
     write_json_file(M.get_project_file_path(bufnr), project_words)
+    if in_global then
+      write_json_file(vim.fs.joinpath(config.dir, config.global_file), global_words)
+    end
   else
     table.insert(global_words, word)
     write_json_file(vim.fs.joinpath(config.dir, config.global_file), global_words)
+    if in_project then
+      local path = M.get_project_file_path(bufnr)
+      if path then
+        write_json_file(path, project_words)
+      end
+    end
   end
   return true
 end
