@@ -163,6 +163,35 @@ M.has = function(word, bufnr)
   return false
 end
 
+M.rename = function(word, new_word, bufnr)
+  word = trim(word)
+  new_word = trim(new_word)
+  if word == "" or new_word == "" then return false end
+  if new_word ~= word and M.has(new_word, bufnr) then return false end
+
+  for i, w in ipairs(project_words) do
+    if w == word then
+      project_words[i] = new_word
+      local path = M.get_project_file_path(bufnr)
+      if path then
+        write_json_file(path, project_words)
+      end
+      return true
+    end
+  end
+
+  for i, w in ipairs(global_words) do
+    if w == word then
+      global_words[i] = new_word
+      local path = vim.fs.joinpath(config.dir, config.global_file)
+      write_json_file(path, global_words)
+      return true
+    end
+  end
+
+  return false
+end
+
 M.get_words = function(bufnr)
   local seen = {}
   local result = {}

@@ -104,6 +104,30 @@ do
   check("scope: count is 3", #entries == 3)
 end
 
+-- Task 4: rename
+do
+  local dir, proj = fresh_env("rename")
+  init_store(dir, proj .. "/main.lua")
+
+  store.add("oldname", "project", 0)
+  store.add("gname", "global", 0)
+
+  check("rename: project scope", store.rename("oldname", "newname", 0) == true)
+  check("rename: old name gone", store.has("oldname", 0) == false)
+  check("rename: new name present", store.has("newname", 0) == true)
+
+  local f = io.open(proj .. "/.mywords.json", "r")
+  local pf = f and f:read("*a") or ""
+  if f then f:close() end
+  check("rename: persisted to project file", pf:find("newname") ~= nil)
+
+  check("rename: global scope", store.rename("gname", "gname2", 0) == true)
+  check("rename: not found returns false", store.rename("nope", "x", 0) == false)
+
+  store.add("taken", "global", 0)
+  check("rename: to existing name fails", store.rename("gname2", "taken", 0) == false)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then
   vim.cmd("cquit")
