@@ -31,17 +31,23 @@ M.setup = function(opts)
     add_insert = "<C-s>",
   }, _config.keys or {})
 
-  vim.keymap.set("n", keys.add, function()
-    M.add()
-  end, { desc = "MyWords: Add word" })
+  if keys.add ~= "" then
+    vim.keymap.set("n", keys.add, function()
+      M.add()
+    end, { desc = "MyWords: Add word" })
+  end
 
-  vim.keymap.set("n", keys.delete, function()
-    M.delete()
-  end, { desc = "MyWords: Delete word" })
+  if keys.delete ~= "" then
+    vim.keymap.set("n", keys.delete, function()
+      M.delete()
+    end, { desc = "MyWords: Delete word" })
+  end
 
-  vim.keymap.set("n", keys.search, function()
-    M.search()
-  end, { desc = "MyWords: Search words" })
+  if keys.search ~= "" then
+    vim.keymap.set("n", keys.search, function()
+      M.search()
+    end, { desc = "MyWords: Search words" })
+  end
 
   if keys.add_insert ~= "" then
     vim.keymap.set("i", keys.add_insert, function()

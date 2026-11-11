@@ -223,6 +223,18 @@ do
   check("init: add key registered", vim.fn.maparg("<leader>ma", "n") ~= "")
 end
 
+-- Task 8 fix: disabling all keys with "" must not error
+do
+  local dir = vim.fn.tempname() .. "/disablekeys"
+  vim.fn.mkdir(dir, "p")
+  local mywords = require("mywords")
+  local ok = pcall(mywords.setup, {
+    dir = dir,
+    keys = { add = "", delete = "", search = "", add_insert = "" },
+  })
+  check("keys: disabling all with empty string does not error", ok == true)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then
   vim.cmd("cquit")
