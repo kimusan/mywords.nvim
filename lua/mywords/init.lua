@@ -60,7 +60,8 @@ end
 
 M.add = function(word, scope)
   if not word then
-    word = vim.fn.expand("<cWORD>")
+    local ok_expand, w = pcall(vim.fn.expand, "<cWORD>")
+    word = ok_expand and w or ""
     if word == "" then
       vim.ui.input({ prompt = "Word: " }, function(input)
         if input and input ~= "" then
@@ -76,8 +77,11 @@ M.add = function(word, scope)
     return
   end
 
-  store.add(word, scope, 0)
-  vim.notify("Added: " .. word, vim.log.INFO)
+  if store.add(word, scope, 0) then
+    vim.notify("Added: " .. word, vim.log.INFO)
+  else
+    vim.notify("Could not add: " .. word, vim.log.WARN)
+  end
 end
 
 M.add_current = function()
@@ -90,7 +94,11 @@ M.add_current = function()
     end
   end
   if not word then
-    word = vim.fn.expand("<cWORD>")
+    local ok_expand, w = pcall(vim.fn.expand, "<cWORD>")
+    word = ok_expand and w or ""
+  end
+  if word == "" then
+    word = nil
   end
   M.add(word)
 end

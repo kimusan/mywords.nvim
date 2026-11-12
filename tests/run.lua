@@ -358,6 +358,72 @@ do
   end
 end
 
+-- Final review: add() must not report success when the word is not stored
+do
+  local dir = vim.fn.tempname() .. "/addfail"
+  vim.fn.mkdir(dir, "p")
+  vim.api.nvim_buf_set_name(0, "")
+  local mywords = require("mywords")
+  mywords.setup({ dir = dir })
+
+  local msgs = {}
+  local orig_notify = vim.notify
+  vim.notify = function(msg)
+    msgs[#msgs + 1] = tostring(msg)
+  end
+
+  mywords.add("noword", "project")
+  local saw_fail, saw_added = false, false
+  for _, m in ipairs(msgs) do
+    if m:find("Could not add", 1, true) then
+      saw_fail = true
+    end
+    if m:find("Added:", 1, true) then
+      saw_added = true
+    end
+  end
+  check("add: project scope without root reports failure", saw_fail == true)
+  check("add: no false success notification", saw_added == false)
+
+  vim.notify = orig_notify
+end
+
+-- Final review: add_current on an empty word must fall back to the prompt
+do
+  local dir = vim.fn.tempname() .. "/addcur"
+  vim.fn.mkdir(dir, "p")
+  vim.api.nvim_buf_set_name(0, "")
+  local mywords = require("mywords")
+  mywords.setup({ dir = dir })
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "    " })
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+
+  local msgs = {}
+  local orig_notify = vim.notify
+  vim.notify = function(msg)
+    msgs[#msgs + 1] = tostring(msg)
+  end
+  local prompt_called = false
+  local orig_ui_input = vim.ui.input
+  vim.ui.input = function()
+    prompt_called = true
+  end
+
+  local ok = pcall(mywords.add_current)
+  check("add_current: empty word does not error", ok == true)
+  check("add_current: empty word falls back to prompt", prompt_called == true)
+  local saw_added = false
+  for _, m in ipairs(msgs) do
+    if m:find("Added", 1, true) then
+      saw_added = true
+    end
+  end
+  check("add_current: empty word does not fake success", saw_added == false)
+
+  vim.notify = orig_notify
+  vim.ui.input = orig_ui_input
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then
   vim.cmd("cquit")
