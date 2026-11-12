@@ -5,9 +5,9 @@ Personal dictionary plugin for Neovim. Spell checkers and linters flag domain-sp
 ## Features
 
 - **Global and per-project dictionaries** — shared words live in `~/.local/share/nvim/mywords`, project-specific words stay in `.mywords.json` at the project root. Both scopes are merged during completion.
-- **Add words with one keypress** — put cursor on any word (including hyphenated ones like `SCSC-Bug-Id`) and press the add keybinding. If no word is under cursor, you're prompted for input.
-- **Delete words** — from cursor, picker, or API call.
-- **Fuzzy search** — browse and search all saved words via fzf-lua (with vim.ui.select fallback).
+- **Add words with one keypress** — put cursor on any word (including hyphenated ones like `SCSC-Bug-Id`) and press the add keybinding. If no word is under cursor, you're prompted for input. In insert mode, `<C-s>` saves the highlighted item from an open completion menu.
+- **Delete, rename, and move words** — from cursor, picker, or API call. The picker also inserts a word at your cursor and moves words between project and global scope.
+- **Fuzzy search** — browse and search all saved words via fzf-lua, each row showing its scope (with vim.ui.select fallback).
 - **Autocomplete** — nvim-cmp source and built-in completion-list support. Triggers on 2+ characters.
 - **JSON storage** — dictionaries are plain JSON arrays. Edit them by hand, version-control project dicts, sync globally.
 
@@ -164,7 +164,7 @@ print(scoped.global)  -- { "loremipsum", ... }
 print(scoped.project) -- { "internal-api", ... }
 
 -- Search manually
-local results = require("mywords").store.search("lorem")
+local results = require("mywords.store").search("lorem")
 
 -- Reload after external edits
 require("mywords").reload()
