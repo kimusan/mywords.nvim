@@ -16,7 +16,7 @@ Personal dictionary plugin for Neovim. Spell checkers and linters flag domain-sp
 ### lazy.nvim
 
 ```lua
-{ "mywords/mywords.nvim" }
+{ "kimusan/mywords.nvim" }
 ```
 
 ### Local development
