@@ -96,6 +96,7 @@ end
 M.open = function(opts, bufnr)
   opts = opts or {}
   bufnr = bufnr or 0
+  store.load_project(bufnr)
   local entries = store.get_words_with_scope(bufnr)
 
   if #entries == 0 then

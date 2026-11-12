@@ -235,6 +235,129 @@ do
   check("keys: disabling all with empty string does not error", ok == true)
 end
 
+-- Final review: picker seam via monkey-patched fzf_exec
+do
+  local ok_fzf, fzf_lua = pcall(require, "fzf-lua")
+  if ok_fzf then
+    local dir, proj = fresh_env("picker")
+    init_store(dir, proj .. "/main.lua")
+    store.add("foo", "project", 0)
+    store.add("bar", "global", 0)
+
+    local lines, actions = nil, nil
+    local orig_exec = fzf_lua.fzf_exec
+    fzf_lua.fzf_exec = function(l, o)
+      lines, actions = l, o.actions
+    end
+    local orig_notify = vim.notify
+    vim.notify = function()
+    end
+
+    local picker = require("mywords.picker")
+    picker.open({}, 0)
+
+    check("picker: rows are flat word<TAB>scope lines",
+      type(lines) == "table" and #lines >= 2 and type(lines[1]) == "string"
+      and lines[1]:find("\t") ~= nil)
+
+    actions["ctrl-d"]({ "foo\tproject" })
+    check("picker: ctrl-d deletes word", store.has("foo", 0) == false)
+
+    actions["alt-m"]({ "bar\tglobal" })
+    local scoped = store.get_words_by_scope(0)
+    check("picker: alt-m moves global to project",
+      vim.tbl_contains(scoped.project, "bar") == true)
+
+    local orig_input = vim.fn.input
+    vim.fn.input = function()
+      return "baz"
+    end
+    actions["alt-r"]({ "bar\tproject" })
+    vim.fn.input = orig_input
+    check("picker: alt-r renames word",
+      store.has("baz", 0) == true and store.has("bar", 0) == false)
+
+    vim.notify = orig_notify
+    fzf_lua.fzf_exec = orig_exec
+  else
+    print("SKIP picker seam checks (fzf-lua unavailable)")
+  end
+end
+
+-- Final review: picker must not show stale project state after a root switch
+do
+  local ok_fzf, fzf_lua = pcall(require, "fzf-lua")
+  if ok_fzf then
+    local dirA = vim.fn.tempname() .. "/staleA"
+    local dirB = vim.fn.tempname() .. "/staleB"
+    local projA = dirA .. "/pa"
+    local projB = dirB .. "/pb"
+    vim.fn.mkdir(projA, "p")
+    vim.fn.mkdir(projB, "p")
+    vim.fn.writefile({}, projA .. "/.git")
+    vim.fn.writefile({}, projB .. "/.git")
+
+    local fb = io.open(projB .. "/.mywords.json", "w")
+    fb:write(vim.json.encode({ "bword" }))
+    fb:close()
+
+    vim.api.nvim_buf_set_name(0, projA .. "/main.lua")
+    store.init({
+      dir = dirA,
+      global_file = "global.json",
+      project_file = ".mywords.json",
+      project_root_patterns = { ".git" },
+    })
+    store.add("onlya", "project", 0)
+
+    vim.api.nvim_buf_set_name(0, projB .. "/main.lua")
+
+    local lines, actions = nil, nil
+    local orig_exec = fzf_lua.fzf_exec
+    fzf_lua.fzf_exec = function(l, o)
+      lines, actions = l, o.actions
+    end
+    local orig_notify = vim.notify
+    vim.notify = function()
+    end
+
+    local picker = require("mywords.picker")
+    picker.open({}, 0)
+
+    local stale = false
+    for _, l in ipairs(lines or {}) do
+      if l:find("onlya", 1, true) then
+        stale = true
+      end
+    end
+    check("picker: no stale project rows after root switch", stale == false)
+
+    if actions then
+      actions["alt-m"]({ "bword\tproject" })
+    end
+
+    local function readf(p)
+      local f = io.open(p, "r")
+      if not f then
+        return ""
+      end
+      local c = f:read("*a")
+      f:close()
+      return c
+    end
+    check("picker: old project file untouched by move",
+      readf(projA .. "/.mywords.json"):find("bword") == nil)
+    check("picker: new project file lost the moved word",
+      readf(projB .. "/.mywords.json"):find("bword") == nil)
+    check("picker: moved word now in global", store.has("bword", 0) == true)
+
+    vim.notify = orig_notify
+    fzf_lua.fzf_exec = orig_exec
+  else
+    print("SKIP stale-project checks (fzf-lua unavailable)")
+  end
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then
   vim.cmd("cquit")
