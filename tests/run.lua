@@ -235,6 +235,31 @@ do
   check("keys: disabling all with empty string does not error", ok == true)
 end
 
+-- Leader-ordering: keymaps must work even when mapleader changes after setup().
+-- Neovim expands <leader> in vim.keymap.set at set-time, so if the user sets
+-- mapleader = " " after loading the plugin, a binding written as "<leader>ma"
+-- sticks to the old (backslash) leader and <space>ma silently does nothing.
+do
+  local dir = vim.fn.tempname() .. "/leaderorder"
+  vim.fn.mkdir(dir, "p")
+  local mywords = require("mywords")
+
+  vim.g.mapleader = "\\"
+  mywords.setup({ dir = dir })
+  check("leader: add bound to backslash leader before change",
+    vim.fn.maparg("\\ma", "n") ~= "")
+
+  vim.g.mapleader = " "
+  vim.cmd("doautocmd BufReadPost")
+
+  check("leader: add rebound to space leader after change",
+    vim.fn.maparg("<space>ma", "n") ~= "")
+  check("leader: delete rebound to space leader after change",
+    vim.fn.maparg("<space>md", "n") ~= "")
+  check("leader: old backslash add binding removed",
+    vim.fn.maparg("\\ma", "n") == "")
+end
+
 -- Final review: picker seam via monkey-patched fzf_exec
 do
   local ok_fzf, fzf_lua = pcall(require, "fzf-lua")

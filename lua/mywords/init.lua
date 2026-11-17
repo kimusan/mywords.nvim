@@ -24,6 +24,18 @@ M.setup = function(opts)
     completion.setup(backend)
   end
 
+  -- vim.keymap.set expands <leader> at set-time, so a binding written as
+  -- "<leader>ma" sticks to whatever mapleader is when setup() runs. Users who
+  -- set mapleader = " " after loading the plugin (very common) would press
+  -- <space>ma and hit nothing, with no add and no notification. Bind the
+  -- expanded raw key, and re-apply when the leader changes (BufReadPost fires
+  -- on every buffer load, which catches a leader set in a file read after setup).
+  local default_keys = {
+    { mode = "n", lhs = "<leader>ma", rhs = function() M.add() end, desc = "MyWords: Add word" },
+    { mode = "n", lhs = "<leader>md", rhs = function() M.delete() end, desc = "MyWords: Delete word" },
+    { mode = "n", lhs = "<leader>ms", rhs = function() M.search() end, desc = "MyWords: Search words" },
+    { mode = "i", lhs = "<C-s>", rhs = function() M.add_current() end, desc = "MyWords: Add current word or completion" },
+  }
   local keys = vim.tbl_deep_extend("force", {
     add = "<leader>ma",
     delete = "<leader>md",
@@ -31,29 +43,54 @@ M.setup = function(opts)
     add_insert = "<C-s>",
   }, _config.keys or {})
 
-  if keys.add ~= "" then
-    vim.keymap.set("n", keys.add, function()
-      M.add()
-    end, { desc = "MyWords: Add word" })
+  local applied = {}
+  local applied_leader = nil
+
+  local function leader_sig()
+    return (vim.g.mapleader or "\\") .. "|" .. (vim.g.maplocalleader or "\\")
   end
 
-  if keys.delete ~= "" then
-    vim.keymap.set("n", keys.delete, function()
-      M.delete()
-    end, { desc = "MyWords: Delete word" })
+  local function expand_leader(lhs)
+    return lhs
+      :gsub("<leader>", function()
+        return vim.g.mapleader or "\\"
+      end)
+      :gsub("<LocalLeader>", function()
+        return vim.g.maplocalleader or "\\"
+      end)
   end
 
-  if keys.search ~= "" then
-    vim.keymap.set("n", keys.search, function()
-      M.search()
-    end, { desc = "MyWords: Search words" })
+  local function apply_keymaps()
+    for _, m in ipairs(applied) do
+      pcall(vim.keymap.del, m.mode, m.lhs)
+    end
+    applied = {}
+    applied_leader = leader_sig()
+
+    local entries = vim.deepcopy(default_keys)
+    entries[1].lhs = keys.add
+    entries[2].lhs = keys.delete
+    entries[3].lhs = keys.search
+    entries[4].lhs = keys.add_insert
+
+    for _, e in ipairs(entries) do
+      if e.lhs ~= "" then
+        local lhs = expand_leader(e.lhs)
+        vim.keymap.set(e.mode, lhs, e.rhs, { desc = e.desc })
+        table.insert(applied, { mode = e.mode, lhs = lhs })
+      end
+    end
   end
 
-  if keys.add_insert ~= "" then
-    vim.keymap.set("i", keys.add_insert, function()
-      M.add_current()
-    end, { desc = "MyWords: Add current word or completion" })
-  end
+  apply_keymaps()
+  vim.api.nvim_create_autocmd("BufReadPost", {
+    group = vim.api.nvim_create_augroup("mywords", {}),
+    callback = function()
+      if applied_leader ~= leader_sig() then
+        apply_keymaps()
+      end
+    end,
+  })
 
   return M
 end
