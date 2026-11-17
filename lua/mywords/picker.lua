@@ -24,6 +24,12 @@ local function insert_at_cursor(word, target)
   if not word then return end
   vim.api.nvim_set_current_buf(target.bufnr)
   vim.api.nvim_win_set_cursor(0, target.pos)
+  -- no-op on non-editable buffers (dashboard, help, ...): nvim_put would
+  -- throw E21/E45 there
+  if not vim.bo[target.bufnr].modifiable or vim.bo[target.bufnr].buftype == "nofile" then
+    vim.notify("Buffer is not editable; word not inserted", vim.log.INFO)
+    return
+  end
   vim.api.nvim_put({ word }, "l", false, true)
 end
 

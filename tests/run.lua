@@ -545,6 +545,43 @@ do
     require("mywords.completion").source == nil)
 end
 
+-- Selecting a word must be a no-op on a non-editable buffer (e.g. a
+-- dashboard: buftype=nofile, modifiable=false), not an E21/E45 error.
+do
+  local dir, proj = fresh_env("noned")
+  init_store(dir, proj .. "/main.lua")
+  store.add("edword", "global", 0)
+
+  -- scratch buffer mimicking the snacks dashboard
+  local buf = vim.api.nvim_create_buf(false, false)
+  vim.bo[buf].buftype = "nofile"
+  vim.bo[buf].modifiable = false
+  vim.api.nvim_set_current_buf(buf)
+
+  local choose_cb = nil
+  local orig_select = vim.ui.select
+  vim.ui.select = function(_, _, cb)
+    choose_cb = cb
+  end
+  local orig_notify = vim.notify
+  vim.notify = function()
+  end
+
+  local ok_open = pcall(require("mywords.picker").open, {}, 0)
+  vim.ui.select = orig_select
+  vim.notify = orig_notify
+
+  check("insert: picker opens on non-editable buffer", ok_open == true)
+  local ok_sel, err_sel = pcall(choose_cb, "edword")
+  check("insert: selecting on non-editable buffer does not error", ok_sel == true)
+  if not ok_sel then
+    io.stderr:write("select err: " .. tostring(err_sel) .. "\n")
+  end
+  local joined = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+  check("insert: non-editable buffer content untouched", joined:find("edword") == nil)
+  vim.api.nvim_buf_delete(buf, { force = true })
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then
   vim.cmd("cquit")
