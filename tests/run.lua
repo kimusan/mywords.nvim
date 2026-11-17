@@ -582,6 +582,47 @@ do
   vim.api.nvim_buf_delete(buf, { force = true })
 end
 
+-- The vim.ui.select fallback (no fzf-lua) must still show each word's
+-- scope, since that is the only hint that a word is project vs global.
+do
+  local dir, proj = fresh_env("scopesel")
+  init_store(dir, proj .. "/main.lua")
+  store.add("pword", "project", 0)
+  store.add("gword", "global", 0)
+
+  local items, opts, cb = nil, nil, nil
+  local orig_select = vim.ui.select
+  vim.ui.select = function(it, o, c)
+    items, opts, cb = it, o, c
+  end
+  local orig_notify = vim.notify
+  vim.notify = function()
+  end
+
+  require("mywords.picker").open({}, 0)
+  vim.ui.select = orig_select
+  vim.notify = orig_notify
+
+  check("ui select: both words listed", type(items) == "table" and #items == 2)
+  local shown = {}
+  for _, e in ipairs(items or {}) do
+    shown[e.word] = opts.format_item(e)
+  end
+  check("ui select: project scope shown", shown["pword"]:find("project", 1, true) ~= nil)
+  check("ui select: global scope shown", shown["gword"]:find("global", 1, true) ~= nil)
+
+  local pidx
+  for i, e in ipairs(items) do
+    if e.word == "pword" then
+      pidx = i
+    end
+  end
+  cb(items[pidx])
+  local lines = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+  check("ui select: callback inserts the bare word", lines:find("pword", 1, true) ~= nil)
+  check("ui select: scope suffix not inserted", lines:find("project", 1, true) == nil)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then
   vim.cmd("cquit")

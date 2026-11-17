@@ -85,16 +85,17 @@ local function fzf_picker(entries, bufnr, target)
 end
 
 local function ui_select_picker(entries, bufnr, target)
-  local words = {}
-  for _, e in ipairs(entries) do
-    table.insert(words, e.word)
-  end
-  table.sort(words)
-  vim.ui.select(words, {
+  table.sort(entries, function(a, b)
+    return a.word < b.word
+  end)
+  vim.ui.select(entries, {
     prompt = "MyWords: select to insert at cursor",
+    format_item = function(e)
+      return e.word .. "  (" .. e.scope .. ")"
+    end,
   }, function(choice)
     if choice then
-      insert_at_cursor(choice, target)
+      insert_at_cursor(choice.word, target)
     end
   end)
 end
