@@ -87,6 +87,12 @@ end
 ------------------------------
 -- Public API
 ------------------------------
+-- Detect blink.cmp without loading it. require("blink.cmp") would force-load a
+-- lazy-loaded plugin (and run its autocmds/keymaps) just for a presence check.
+local function has_blink_cmp()
+  return #vim.api.nvim_get_runtime_file("lua/blink/cmp/init.lua", true) > 0
+end
+
 M.setup = function(backend)
   if backend == "cmp" then
     M.source = cmp_source:new()
@@ -95,6 +101,21 @@ M.setup = function(backend)
 
   if backend == "nvim" then
     nvim_completer.setup()
+    return
+  end
+
+  -- blink.cmp: the source is declared in the user's own blink.cmp config
+  -- (sources.providers.mywords.module = "mywords.source.blink"), which mywords
+  -- can't reach at setup time, so there is nothing to install. We must also not
+  -- fall through to the built-in completion-list, which would render a second
+  -- menu under blink.cmp. Hence a bare return in both blink branches.
+  if backend == "blink" then
+    return
+  end
+
+  -- "auto": detect blink.cmp before nvim-cmp so a blink user never gets the
+  -- built-in completion-list (a competing menu).
+  if has_blink_cmp() then
     return
   end
 

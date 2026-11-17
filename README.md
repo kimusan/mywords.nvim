@@ -8,7 +8,7 @@ Personal dictionary plugin for Neovim. Spell checkers and linters flag domain-sp
 - **Add words with one keypress** — put cursor on any word (including hyphenated ones like `SCSC-Bug-Id`) and press the add keybinding. If no word is under cursor, you're prompted for input. In insert mode, `<C-s>` saves the highlighted item from an open completion menu.
 - **Delete, rename, and move words** — from cursor, picker, or API call. The picker also inserts a word at your cursor and moves words between project and global scope.
 - **Fuzzy search** — browse and search all saved words via fzf-lua, each row showing its scope (with vim.ui.select fallback).
-- **Autocomplete** — nvim-cmp source and built-in completion-list support. Triggers on 2+ characters.
+- **Autocomplete** — nvim-cmp source, blink.cmp source, and built-in completion-list support. Triggers on 2+ characters.
 - **JSON storage** — dictionaries are plain JSON arrays. Edit them by hand, version-control project dicts, sync globally.
 
 ## Installation
@@ -52,7 +52,7 @@ require("mywords").setup({
   -- Completion settings
   completion = {
     enabled = true,
-    -- "auto" (detect cmp), "cmp", or "nvim" (built-in completion-list)
+    -- "auto" (detect blink.cmp, then nvim-cmp), "blink", "cmp", or "nvim" (built-in)
     backend = "auto",
   },
 
@@ -92,6 +92,31 @@ If you manage cmp sources separately:
   source = require("mywords").get_source(),
 }
 ```
+
+### blink.cmp
+
+Set `backend = "blink"` (or `"auto"`, which detects blink.cmp first). Unlike nvim-cmp,
+a blink.cmp source must be declared in your blink.cmp config, since mywords can't
+reach that config at setup time:
+
+```lua
+{
+  "saghen/blink.cmp",
+  opts = {
+    sources = {
+      default = { "mywords" },
+      providers = {
+        mywords = {
+          name = "MyWords",
+          module = "mywords.source.blink",
+        },
+      },
+    },
+  },
+}
+```
+
+`backend = "blink"` installs nothing on its own; the line above wires the source in.
 
 ### LazyVim
 

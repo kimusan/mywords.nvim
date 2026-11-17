@@ -449,6 +449,102 @@ do
   vim.ui.input = orig_ui_input
 end
 
+-- blink.cmp source module. In this bare `nvim -l` environment blink.cmp is not
+-- on the runtimepath, so stub blink.cmp.types (real enum values) before loading
+-- the source; that lets us exercise get_completions without the full plugin.
+do
+  package.preload["blink.cmp.types"] = function()
+    return {
+      CompletionItemKind = {
+        Text = 1,
+        Variable = 6,
+        Value = 12,
+      },
+    }
+  end
+
+  local ok_blink, blink_src = pcall(require, "mywords.source.blink")
+  if ok_blink then
+    local dir, proj = fresh_env("blink")
+    init_store(dir, proj .. "/main.lua")
+    store.add("blinkword", "project", 0)
+    store.add("blinkglob", "global", 0)
+
+    local s = blink_src.new()
+    check("blink: new returns instance", type(s) == "table")
+    check("blink: get_trigger_characters returns space",
+      (function()
+        local t = s:get_trigger_characters()
+        return type(t) == "table" and t[1] == " "
+      end)())
+
+    local response = nil
+    local kind_value = require("blink.cmp.types").CompletionItemKind.Value
+    s:get_completions(
+      { cursor = { 1, 3 }, bounds = { line = "  bl", line_number = 1, start_col = 3, length = 2 } },
+      function(r)
+        response = r
+      end
+    )
+
+    check("blink: get_completions emits items", type(response) == "table" and type(response.items) == "table")
+    check("blink: both store words emitted", #response.items == 2)
+
+    local labels = {}
+    for _, it in ipairs(response.items) do
+      labels[it.label] = it
+    end
+    check("blink: word labels present", labels["blinkword"] ~= nil and labels["blinkglob"] ~= nil)
+
+    local it = labels["blinkword"]
+    check("blink: item kind is Value", it.kind == kind_value)
+    check("blink: textEdit.newText is the word", it.textEdit.newText == "blinkword")
+    -- 0-indexed exclusive end: line 1 -> 0, start col 3 -> 2, cursor col 3
+    check(
+      "blink: textEdit range is 0-indexed",
+      it.textEdit.range.start.line == 0
+        and it.textEdit.range.start.character == 2
+        and it.textEdit.range["end"].line == 0
+        and it.textEdit.range["end"].character == 3
+    )
+
+    -- empty store must still invoke the callback with no items
+    local dir2 = vim.fn.tempname() .. "/blinkempty"
+    vim.fn.mkdir(dir2, "p")
+    vim.api.nvim_buf_set_name(0, "")
+    store.init({
+      dir = dir2,
+      global_file = "global.json",
+      project_file = ".mywords.json",
+      project_root_patterns = { ".git" },
+    })
+    local empty = nil
+    s:get_completions(
+      { cursor = { 1, 1 }, bounds = { line = "x", line_number = 1, start_col = 1, length = 0 } },
+      function(r)
+        empty = r
+      end
+    )
+    check("blink: empty store emits empty items", type(empty) == "table" and #empty.items == 0)
+  else
+    io.stderr:write("SKIP blink source checks: " .. tostring(blink_src) .. "\n")
+  end
+end
+
+-- blink backend selection: setup("blink") installs nothing and does not
+-- enable the built-in completion-list (M.source stays nil in this env).
+do
+  local ok_setup, err = pcall(function()
+    require("mywords.completion").setup("blink")
+  end)
+  check("blink: setup('blink') does not error", ok_setup == true)
+  if not ok_setup then
+    io.stderr:write("setup('blink') error: " .. tostring(err) .. "\n")
+  end
+  check("blink: no competing nvim-cmp source registered",
+    require("mywords.completion").source == nil)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then
   vim.cmd("cquit")
